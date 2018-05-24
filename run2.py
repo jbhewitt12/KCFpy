@@ -8,11 +8,10 @@ import kcftracker
 selectingObject = False
 initTracking = False
 onTracking = False
-start = True
 ix, iy, cx, cy = -1, -1, -1, -1
 w, h = 0, 0
 
-inteval = 25
+inteval = 1
 duration = 0.01
 
 # mouse callback function
@@ -48,8 +47,7 @@ def draw_boundingbox(event, x, y, flags, param):
 if __name__ == '__main__':
 	
 	if(len(sys.argv)==1):
-		cap = cv2.VideoCapture('C:/Users/Josh/Desktop/Uni/Capstone A/VOT dataset/VOT2015/bag/%08d.jpg')
-		# cap = cv2.VideoCapture(0)
+		cap = cv2.VideoCapture(0)
 	elif(len(sys.argv)==2):
 		if(sys.argv[1].isdigit()):  # True if sys.argv[1] is str of a nonnegative integer
 			cap = cv2.VideoCapture(int(sys.argv[1]))
@@ -66,20 +64,19 @@ if __name__ == '__main__':
 
 	while(cap.isOpened()):
 		ret, frame = cap.read()
-		# print "frame: "
-		# print frame
 		if not ret:
 			break
 
-		if start:
-			w = abs(291 - 442)	
-			h = abs(120 - 270)	
-			tracker.init([291,120,w,h], frame)
-			start = False
+		if(selectingObject):
+			cv2.rectangle(frame,(ix,iy), (cx,cy), (0,255,255), 1)
+		elif(initTracking):
+			cv2.rectangle(frame,(ix,iy), (ix+w,iy+h), (0,255,255), 2)
 
-		initTracking = False
-		onTracking = True
-		if(onTracking):
+			tracker.init([ix,iy,w,h], frame)
+
+			initTracking = False
+			onTracking = True
+		elif(onTracking):
 			t0 = time()
 			boundingbox = tracker.update(frame) #Get the new bounding box from the tracker, given the new frame
 			t1 = time()
