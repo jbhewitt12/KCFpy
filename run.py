@@ -47,8 +47,24 @@ def draw_boundingbox(event, x, y, flags, param):
 
 if __name__ == '__main__':
 	
+	base_path = 'C:/Users/Josh/Desktop/Uni/Capstone A/VOT dataset/'
+	sequence = 'VOT2013/bicycle/'
+	images = '%08d.jpg'
+	groundtruth_path = base_path+sequence+'groundtruth.txt'
+	full_path = base_path+sequence+images
+
+	gt = np.loadtxt(groundtruth_path,delimiter=',')
+	initial_gt = gt[0]
+	print 'gt: '
+	print gt
+	row1 = gt[0]
+	print row1
+	print row1[0]
+
+
 	if(len(sys.argv)==1):
-		cap = cv2.VideoCapture('C:/Users/Josh/Desktop/Uni/Capstone A/VOT dataset/VOT2015/bag/%08d.jpg')
+		# cap = cv2.VideoCapture('C:/Users/Josh/Desktop/Uni/Capstone A/VOT dataset/VOT2015/bag/%08d.jpg')
+		cap = cv2.VideoCapture(full_path)
 		# cap = cv2.VideoCapture(0)
 	elif(len(sys.argv)==2):
 		if(sys.argv[1].isdigit()):  # True if sys.argv[1] is str of a nonnegative integer
@@ -72,9 +88,12 @@ if __name__ == '__main__':
 			break
 
 		if start:
-			w = abs(291 - 442)	
-			h = abs(120 - 270)	
-			tracker.init([291,120,w,h], frame)
+			# w = abs(291 - 442)	
+			# h = abs(120 - 270)	
+			# tracker.init([291,120,w,h], frame)
+			w = initial_gt[2]	
+			h = initial_gt[3]	
+			tracker.init([initial_gt[0],initial_gt[1],w,h], frame)
 			start = False
 
 		initTracking = False
