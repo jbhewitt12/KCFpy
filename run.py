@@ -43,6 +43,28 @@ def draw_boundingbox(event, x, y, flags, param):
 			ix, iy = x-w/2, y-h/2
 			initTracking = True
 
+def overlap_ratio(rect1, rect2):
+    '''
+   	Takes 2 numpy arrays 
+    Compute overlap ratio between two rects
+    - rect: 1d array of [x,y,w,h] or 
+            2d array of N x [x,y,w,h]
+    '''
+
+    if rect1.ndim==1:
+        rect1 = rect1[None,:]
+    if rect2.ndim==1:
+        rect2 = rect2[None,:]
+
+    left = np.maximum(rect1[:,0], rect2[:,0])
+    right = np.minimum(rect1[:,0]+rect1[:,2], rect2[:,0]+rect2[:,2])
+    top = np.maximum(rect1[:,1], rect2[:,1])
+    bottom = np.minimum(rect1[:,1]+rect1[:,3], rect2[:,1]+rect2[:,3])
+
+    intersect = np.maximum(0,right - left) * np.maximum(0,bottom - top)
+    union = rect1[:,2]*rect1[:,3] + rect2[:,2]*rect2[:,3] - intersect
+    iou = np.clip(intersect / union, 0, 1)
+    return iou
 
 
 if __name__ == '__main__':
@@ -53,13 +75,10 @@ if __name__ == '__main__':
 	groundtruth_path = base_path+sequence+'groundtruth.txt'
 	full_path = base_path+sequence+images
 
-	gt = np.loadtxt(groundtruth_path,delimiter=',')
-	initial_gt = gt[0]
-	print 'gt: '
-	print gt
-	row1 = gt[0]
-	print row1
-	print row1[0]
+
+	
+	# print row1
+	# print row1[0]
 
 
 	if(len(sys.argv)==1):
@@ -67,19 +86,24 @@ if __name__ == '__main__':
 		cap = cv2.VideoCapture(full_path)
 		# cap = cv2.VideoCapture(0)
 	elif(len(sys.argv)==2):
-		if(sys.argv[1].isdigit()):  # True if sys.argv[1] is str of a nonnegative integer
-			cap = cv2.VideoCapture(int(sys.argv[1]))
-		else:
-			cap = cv2.VideoCapture(sys.argv[1])
-			inteval = 30
+		folder_p = base_path+'VOT2013/'+sys.argv[1]+'/groundtruth.txt'
+		cap = cv2.VideoCapture(base_path+'VOT2013/'+sys.argv[1]+'/'+images)
+		
 	else:  assert(0), "too many arguments"
+
+	gt = np.loadtxt(folder_p,delimiter=',')
+	initial_gt = gt[0]
+	# print 'gt: '
+	# print gt
+	row1 = gt[0]
 
 	tracker = kcftracker.KCFTracker(True, True, True)  # hog, fixed_window, multiscale
 	#if you use hog feature, there will be a short pause after you draw a first boundingbox, that is due to the use of Numba.
 
 	cv2.namedWindow('tracking')
 	cv2.setMouseCallback('tracking',draw_boundingbox)
-
+	folder = 'saved'
+	count = 0
 	while(cap.isOpened()):
 		ret, frame = cap.read()
 		# print "frame: "
@@ -104,16 +128,30 @@ if __name__ == '__main__':
 			t1 = time()
 
 			boundingbox = map(int, boundingbox)
-			cv2.rectangle(frame,(boundingbox[0],boundingbox[1]), (boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]), (0,255,255), 1)
+			estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[2],boundingbox[3]])
+			# estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]])
+			cv2.rectangle(frame,(boundingbox[0],boundingbox[1]), (boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]), (0,255,255), 2)
 			
 			duration = 0.8*duration + 0.2*(t1-t0)
 			#duration = t1-t0
-			cv2.putText(frame, 'FPS: '+str(1/duration)[:4].strip('.'), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+			# print 'gt:'
+			# print gt[count]
+			# print 'estimate:'
+			# print estimate
+			overlap = overlap_ratio(gt[count], estimate)
+			# print overlap[0]
+			# if(count > 4):
+			# 	break
+			# cv2.putText(frame, 'FPS: '+str(1/duration)[:4].strip('.'), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+			cv2.putText(frame, 'Accuracy: '+ str(overlap[0]), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
 		cv2.imshow('tracking', frame)
+		# cv2.imwrite('%s/%s.JPEG' % (folder,count),frame)
+		count += 1
 		c = cv2.waitKey(inteval) & 0xFF
 		if c==27 or c==ord('q'):
 			break
 
 	cap.release()
 	cv2.destroyAllWindows()
+
