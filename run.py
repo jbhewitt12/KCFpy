@@ -92,6 +92,8 @@ if __name__ == '__main__':
 	else:  assert(0), "too many arguments"
 
 	gt = np.loadtxt(folder_p,delimiter=',')
+	print 'len(gt)'
+	print len(gt)
 	initial_gt = gt[0]
 	# print 'gt: '
 	# print gt
@@ -104,20 +106,47 @@ if __name__ == '__main__':
 	cv2.setMouseCallback('tracking',draw_boundingbox)
 	folder = 'saved'
 	count = 0
+	overlap_total = 0
+	average_overlap = 0
+	reinit = False
+	skip_count = False
+	reinitialize_count = 0
 	while(cap.isOpened()):
-		ret, frame = cap.read()
+		if reinit:
+			k = 0
+			while(k<10): # Skip 10 frames and reinitialize tracker
+				ret, frame = cap.read()
+				k += 1
+				count += 1
+
+				
+			start = True
+			reinit = False
+			skip_count = True
+			
+		else:
+			ret, frame = cap.read()
+		
+		
 		# print "frame: "
 		# print frame
 		if not ret:
+			print 'is this thing on?'
+			print count
 			break
+
+		# print count
+		if(count < len(gt)):
+			current_gt = gt[count]
+		
 
 		if start:
 			# w = abs(291 - 442)	
 			# h = abs(120 - 270)	
 			# tracker.init([291,120,w,h], frame)
-			w = initial_gt[2]	
-			h = initial_gt[3]	
-			tracker.init([initial_gt[0],initial_gt[1],w,h], frame)
+			w = current_gt[2]	
+			h = current_gt[3]	
+			tracker.init([current_gt[0],current_gt[1],w,h], frame)
 			start = False
 
 		initTracking = False
@@ -128,17 +157,32 @@ if __name__ == '__main__':
 			t1 = time()
 
 			boundingbox = map(int, boundingbox)
+			
+			# for idx, i in current_gt:
+			# 	current_gt[idx] = int(i)
+			# current_gt[0] = int(current_gt[0])
+			# current_gt[1] = int(current_gt[1])
+			# current_gt[2] = int(current_gt[2])
+			# current_gt[3] = int(current_gt[3])
+			# print 'current_gt:'
+			# print current_gt
 			estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[2],boundingbox[3]])
 			# estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]])
 			cv2.rectangle(frame,(boundingbox[0],boundingbox[1]), (boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]), (0,255,255), 2)
+			cv2.rectangle(frame,(int(current_gt[0]),int(current_gt[1])), (int(current_gt[0])+int(current_gt[2]),int(current_gt[1])+int(current_gt[3])), (255,0,0), 2)
 			
+
 			duration = 0.8*duration + 0.2*(t1-t0)
 			#duration = t1-t0
-			# print 'gt:'
-			# print gt[count]
+			
 			# print 'estimate:'
 			# print estimate
-			overlap = overlap_ratio(gt[count], estimate)
+			if(count < len(gt)):
+				overlap = overlap_ratio(gt[count], estimate)
+			if overlap[0] == 0:
+				reinit = True
+				reinitialize_count += 1
+			overlap_total += overlap[0]
 			# print overlap[0]
 			# if(count > 4):
 			# 	break
@@ -147,11 +191,20 @@ if __name__ == '__main__':
 
 		cv2.imshow('tracking', frame)
 		# cv2.imwrite('%s/%s.JPEG' % (folder,count),frame)
-		count += 1
+		if skip_count:
+			skip_count = False
+		else:
+			count += 1
 		c = cv2.waitKey(inteval) & 0xFF
 		if c==27 or c==ord('q'):
 			break
 
+	print 'average overlap:'
+	print overlap_total/count
+	print 'reinitialize_count:'
+	print reinitialize_count
+	print 'count'
+	print count
 	cap.release()
 	cv2.destroyAllWindows()
 
