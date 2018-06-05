@@ -66,6 +66,40 @@ def overlap_ratio(rect1, rect2):
     iou = np.clip(intersect / union, 0, 1)
     return iou
 
+def convert_groundtruth(gt):
+    print "converting gt"
+    print 'gt: '
+    print gt
+    # print(len(gt))
+    truths = []
+    
+
+    for row in gt:
+        xvals = [row[0],row[2],row[4],row[6]]
+        yvals = [row[1],row[3],row[5],row[7]]
+        top = max(yvals)
+        bottom = min(yvals)
+        left = min(xvals)
+        right = max(xvals)
+        box = []
+        print('------********')
+        print xvals
+        print yvals
+        print top
+        print bottom
+        print left
+        print right
+        box.append(left)
+        box.append(bottom)
+        box.append(abs(right - left))
+        box.append(abs(top - bottom))
+        truths.append(box)
+
+    truths = np.asarray(truths)
+    print 'truths:'
+    print truths
+    return truths
+
 
 if __name__ == '__main__':
 	
@@ -86,12 +120,16 @@ if __name__ == '__main__':
 		cap = cv2.VideoCapture(full_path)
 		# cap = cv2.VideoCapture(0)
 	elif(len(sys.argv)==2):
-		folder_p = base_path+'VOT2013/'+sys.argv[1]+'/groundtruth.txt'
-		cap = cv2.VideoCapture(base_path+'VOT2013/'+sys.argv[1]+'/'+images)
+		folder_p = base_path+sys.argv[1]+'/groundtruth.txt'
+		cap = cv2.VideoCapture(base_path+sys.argv[1]+'/'+images)
 		
 	else:  assert(0), "too many arguments"
 
 	gt = np.loadtxt(folder_p,delimiter=',')
+	if(len(gt[0]) == 8):
+		gt = convert_groundtruth(gt)
+
+
 	print 'len(gt)'
 	print len(gt)
 	initial_gt = gt[0]
@@ -105,24 +143,25 @@ if __name__ == '__main__':
 	cv2.namedWindow('tracking')
 	cv2.setMouseCallback('tracking',draw_boundingbox)
 	folder = 'saved'
-	count = 0
-	overlap_total = 0
-	average_overlap = 0
+	count = 0 #corresponds to correct ground truth index
+	overlap_total = 0 
 	reinit = False
 	skip_count = False
-	reinitialize_count = 0
+	reinitialize_count = 0 #number of times reanitialized
+	initialized = 0 #number of frames since being reinitialized (We do not count towards average overlap within 10 frames of reinitialization) 
+	accuracy_count = 0
 	while(cap.isOpened()):
-		if reinit:
+		if reinit: 
 			k = 0
 			while(k<10): # Skip 10 frames and reinitialize tracker
 				ret, frame = cap.read()
 				k += 1
 				count += 1
 
-				
 			start = True
 			reinit = False
 			skip_count = True
+			initialized = 0
 			
 		else:
 			ret, frame = cap.read()
@@ -131,8 +170,6 @@ if __name__ == '__main__':
 		# print "frame: "
 		# print frame
 		if not ret:
-			print 'is this thing on?'
-			print count
 			break
 
 		# print count
@@ -158,12 +195,6 @@ if __name__ == '__main__':
 
 			boundingbox = map(int, boundingbox)
 			
-			# for idx, i in current_gt:
-			# 	current_gt[idx] = int(i)
-			# current_gt[0] = int(current_gt[0])
-			# current_gt[1] = int(current_gt[1])
-			# current_gt[2] = int(current_gt[2])
-			# current_gt[3] = int(current_gt[3])
 			# print 'current_gt:'
 			# print current_gt
 			estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[2],boundingbox[3]])
@@ -182,10 +213,10 @@ if __name__ == '__main__':
 			if overlap[0] == 0:
 				reinit = True
 				reinitialize_count += 1
-			overlap_total += overlap[0]
-			# print overlap[0]
-			# if(count > 4):
-			# 	break
+			if(initialized >= 10):
+				overlap_total += overlap[0]
+				accuracy_count += 1
+
 			# cv2.putText(frame, 'FPS: '+str(1/duration)[:4].strip('.'), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 			cv2.putText(frame, 'Accuracy: '+ str(overlap[0]), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
@@ -195,12 +226,13 @@ if __name__ == '__main__':
 			skip_count = False
 		else:
 			count += 1
+		initialized += 1
 		c = cv2.waitKey(inteval) & 0xFF
 		if c==27 or c==ord('q'):
 			break
 
 	print 'average overlap:'
-	print overlap_total/count
+	print overlap_total/accuracy_count
 	print 'reinitialize_count:'
 	print reinitialize_count
 	print 'count'
