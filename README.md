@@ -2,6 +2,8 @@
 
 This is a fork of the [Python implmentation of KCF](https://github.com/uoip/KCFpy). I have modified the code to run sequences from the [VOT Challenge](http://www.votchallenge.net/) and provide Accuracy, Robustness and Frames Per Second evaluation metrics.
 
+![Example from VOT2016/matrix sequence](https://github.com/jbhewitt12/KCFpy/blob/master/matrix_eg.JPEG)
+
 The original paper:
 > [High-Speed Tracking with Kernelized Correlation Filters](http://www.robots.ox.ac.uk/~joao/publications/henriques_tpami2015.pdf)<br>
 > J. F. Henriques, R. Caseiro, P. Martins, J. Batista<br>
