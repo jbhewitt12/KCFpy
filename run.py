@@ -1,7 +1,9 @@
 import numpy as np 
 import cv2
 import sys
+import os
 from time import time
+
 
 import kcftracker
 
@@ -67,13 +69,8 @@ def overlap_ratio(rect1, rect2):
     return iou
 
 def convert_groundtruth(gt):
-    print "converting gt"
-    print 'gt: '
-    print gt
-    # print(len(gt))
     truths = []
     
-
     for row in gt:
         xvals = [row[0],row[2],row[4],row[6]]
         yvals = [row[1],row[3],row[5],row[7]]
@@ -82,13 +79,6 @@ def convert_groundtruth(gt):
         left = min(xvals)
         right = max(xvals)
         box = []
-        print('------********')
-        print xvals
-        print yvals
-        print top
-        print bottom
-        print left
-        print right
         box.append(left)
         box.append(bottom)
         box.append(abs(right - left))
@@ -96,29 +86,19 @@ def convert_groundtruth(gt):
         truths.append(box)
 
     truths = np.asarray(truths)
-    print 'truths:'
-    print truths
     return truths
 
 
 if __name__ == '__main__':
 	
-	base_path = 'C:/Users/Josh/Desktop/Uni/Capstone A/VOT dataset/'
-	sequence = 'VOT2013/bicycle/'
+	base_path = os.path.dirname(os.path.abspath(__file__)) + '/VOTdataset/'
 	images = '%08d.jpg'
-	groundtruth_path = base_path+sequence+'groundtruth.txt'
-	full_path = base_path+sequence+images
-
-
-	
-	# print row1
-	# print row1[0]
-
 
 	if(len(sys.argv)==1):
-		# cap = cv2.VideoCapture('C:/Users/Josh/Desktop/Uni/Capstone A/VOT dataset/VOT2015/bag/%08d.jpg')
-		cap = cv2.VideoCapture(full_path)
-		# cap = cv2.VideoCapture(0)
+		print 'ERROR: you must enter the path from the "VOTdataset" folder to the sequence folder you wish to run.'	
+		print 'eg: "python run.py VOT2016/matrix"'
+		sys.exit()
+	
 	elif(len(sys.argv)==2):
 		folder_p = base_path+sys.argv[1]+'/groundtruth.txt'
 		cap = cv2.VideoCapture(base_path+sys.argv[1]+'/'+images)
@@ -126,15 +106,10 @@ if __name__ == '__main__':
 	else:  assert(0), "too many arguments"
 
 	gt = np.loadtxt(folder_p,delimiter=',')
-	if(len(gt[0]) == 8):
+	if(len(gt[0]) == 8): #VOT2014 and beyond uses 8 values for the ground truth
 		gt = convert_groundtruth(gt)
 
-
-	print 'len(gt)'
-	print len(gt)
 	initial_gt = gt[0]
-	# print 'gt: '
-	# print gt
 	row1 = gt[0]
 
 	tracker = kcftracker.KCFTracker(True, True, True)  # hog, fixed_window, multiscale
@@ -150,6 +125,8 @@ if __name__ == '__main__':
 	reinitialize_count = 0 #number of times reanitialized
 	initialized = 0 #number of frames since being reinitialized (We do not count towards average overlap within 10 frames of reinitialization) 
 	accuracy_count = 0
+	fps_total = 0
+	fps_count = 0
 	while(cap.isOpened()):
 		if reinit: 
 			k = 0
@@ -166,62 +143,53 @@ if __name__ == '__main__':
 		else:
 			ret, frame = cap.read()
 		
-		
-		# print "frame: "
-		# print frame
 		if not ret:
 			break
 
-		# print count
 		if(count < len(gt)):
 			current_gt = gt[count]
 		
-
 		if start:
-			# w = abs(291 - 442)	
-			# h = abs(120 - 270)	
-			# tracker.init([291,120,w,h], frame)
+			#format: x1, y1, width, height ----- x1, y1 is the bottom left corner of the rectangle
 			w = current_gt[2]	
 			h = current_gt[3]	
 			tracker.init([current_gt[0],current_gt[1],w,h], frame)
 			start = False
 
 		initTracking = False
-		onTracking = True
-		if(onTracking):
-			t0 = time()
-			boundingbox = tracker.update(frame) #Get the new bounding box from the tracker, given the new frame
-			t1 = time()
+		
+		t0 = time()
+		boundingbox = tracker.update(frame) #Get the new bounding box from the tracker, given the new frame
+		t1 = time()
 
-			boundingbox = map(int, boundingbox)
-			
-			# print 'current_gt:'
-			# print current_gt
-			estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[2],boundingbox[3]])
-			# estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]])
-			cv2.rectangle(frame,(boundingbox[0],boundingbox[1]), (boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]), (0,255,255), 2)
-			cv2.rectangle(frame,(int(current_gt[0]),int(current_gt[1])), (int(current_gt[0])+int(current_gt[2]),int(current_gt[1])+int(current_gt[3])), (255,0,0), 2)
-			
+		boundingbox = map(int, boundingbox)
+		
+		estimate = np.array([boundingbox[0],boundingbox[1],boundingbox[2],boundingbox[3]])
+		
+		cv2.rectangle(frame,(boundingbox[0],boundingbox[1]), (boundingbox[0]+boundingbox[2],boundingbox[1]+boundingbox[3]), (0,255,255), 2)
+		cv2.rectangle(frame,(int(current_gt[0]),int(current_gt[1])), (int(current_gt[0])+int(current_gt[2]),int(current_gt[1])+int(current_gt[3])), (255,0,0), 2)
 
-			duration = 0.8*duration + 0.2*(t1-t0)
-			#duration = t1-t0
-			
-			# print 'estimate:'
-			# print estimate
-			if(count < len(gt)):
-				overlap = overlap_ratio(gt[count], estimate)
-			if overlap[0] == 0:
-				reinit = True
-				reinitialize_count += 1
-			if(initialized >= 10):
-				overlap_total += overlap[0]
-				accuracy_count += 1
+		duration = 0.8*duration + 0.2*(t1-t0)
+		fps = 1/duration
+		
+		fps_total += fps
+		fps_count += 1
+		
+		if(count < len(gt)):
+			overlap = overlap_ratio(gt[count], estimate)
+		if overlap[0] == 0:
+			reinit = True
+			reinitialize_count += 1
+		if(initialized >= 10):
+			overlap_total += overlap[0]
+			accuracy_count += 1
 
-			# cv2.putText(frame, 'FPS: '+str(1/duration)[:4].strip('.'), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
-			cv2.putText(frame, 'Accuracy: '+ str(overlap[0]), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+		# cv2.putText(frame, 'FPS: '+str(1/duration)[:4].strip('.'), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+		cv2.putText(frame, 'Accuracy: '+ str(overlap[0]), (8,20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
 		cv2.imshow('tracking', frame)
-		# cv2.imwrite('%s/%s.JPEG' % (folder,count),frame)
+
+		cv2.imwrite('%s/%s.JPEG' % (folder,count),frame)
 		if skip_count:
 			skip_count = False
 		else:
@@ -231,12 +199,15 @@ if __name__ == '__main__':
 		if c==27 or c==ord('q'):
 			break
 
+
+	print 'average fps:'
+	print fps_total/fps
+
 	print 'average overlap:'
 	print overlap_total/accuracy_count
-	print 'reinitialize_count:'
+
+	print 'Number of reinitializations:'
 	print reinitialize_count
-	print 'count'
-	print count
 	cap.release()
 	cv2.destroyAllWindows()
 

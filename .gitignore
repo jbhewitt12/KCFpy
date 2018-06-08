@@ -1,2 +1,6 @@
 __pycache__/*
 *.pyc
+VOTdataset/*
+!VOTdataset/.gitkeep 
+saved/*
+!saved/.gitkeep 
