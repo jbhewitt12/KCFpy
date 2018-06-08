@@ -2,6 +2,7 @@
 
 This is a fork of the [Python implmentation of KCF](https://github.com/uoip/KCFpy). I have modified the code to run sequences from the [VOT Challenge](http://www.votchallenge.net/) and provide Accuracy, Robustness and Frames Per Second evaluation metrics.
 
+Example from VOT2016/matrix sequence:
 ![Example from VOT2016/matrix sequence](https://github.com/jbhewitt12/KCFpy/blob/master/matrix_eg.JPEG)
 
 The original paper:
