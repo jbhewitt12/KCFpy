@@ -1,6 +1,6 @@
 # KCF tracker in Python
 
-This is a fork of the [Python implmentation of KCF](https://github.com/uoip/KCFpy). I have modified the code to run sequences from the [VOT Challenge.](http://www.votchallenge.net/) and provide Accuracy, Robustness and Frames Per Second evaluation metrics.
+This is a fork of the [Python implmentation of KCF](https://github.com/uoip/KCFpy). I have modified the code to run sequences from the [VOT Challenge](http://www.votchallenge.net/) and provide Accuracy, Robustness and Frames Per Second evaluation metrics.
 
 The original paper:
 > [High-Speed Tracking with Kernelized Correlation Filters](http://www.robots.ox.ac.uk/~joao/publications/henriques_tpami2015.pdf)<br>
@@ -14,8 +14,6 @@ The original paper:
 - OpenCV (ensure that you can `import cv2` in python)
 
 I recommend installing Anaconda(for Python 2.7), and OpenCV 3.1(from [opencv.org](http://opencv.org/)).
-
-I used Anaconda for Python 3 and setup a python 2.7 virtual environment.
 
 ### To Run:
 - Install the required packages
@@ -33,5 +31,18 @@ eg:
 ```shell
 python run.py VOT2016/matrix
 ```
+
+The figures will automatically be saved into the 'saved' folder. Comment out line 192 in run.py to stop this. 
+
+### My setup
+I used Anaconda for Python 3 and setup a python 2.7 virtual environment called 'pykcf' on Windows 10.
+
+How I did this: 
+```shell
+conda create --name pykcf python=2.7.13 numpy numba scipy
+activate pykcf
+pip install openCV-python
+```
+
 
 
